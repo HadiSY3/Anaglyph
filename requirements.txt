@@ -1,0 +1,7 @@
+argparse
+screeninfo
+customtkinter
+tkinter
+opencv-python
+numpy
+matplotlib
