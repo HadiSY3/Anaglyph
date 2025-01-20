@@ -2,6 +2,15 @@ import numpy as np
 import cv2 as cv
 from screeninfo import get_monitors
 
+
+    
+def resize_to_width(img):
+    target_width = 1440
+    height, width = img.shape[:2]
+    scale_factor = target_width / width
+    new_height = int(height * scale_factor)
+    return cv.resize(img, (target_width, new_height), interpolation=cv.INTER_AREA)
+
 def shiftImage(img, max_rand, min_rand):
     h, w = img.shape[:2]
     
@@ -13,13 +22,14 @@ def shiftImage(img, max_rand, min_rand):
             scale_factor = m.height/h
             
     shift = (scale_factor*min_rand/ppmm) * ppmm
-
+    '''
     print("Maximaler Versatz in Pixel: ", scale_factor*max_rand)
     print("Maximaler Versatz in mm: ", scale_factor*max_rand/ppmm)
     print("Minimaler Versatz in Pixel: ", scale_factor*min_rand)
     print("Minimaler Versatz in mm: ", scale_factor*min_rand/ppmm)
     print("shift in pixel: ", shift)
     print("shift in mm: ", shift/ppmm)
+    '''
 
     M = np.float32([[1, 0, shift], [0, 1, 0]])  
     return cv.warpAffine(img, M, (w,h))
@@ -61,20 +71,13 @@ def crop(img1_rectified, img2_rectified, H1, H2):
     cropped2 = img2_rectified[int(y_oben):int(y_unten), int(x_links):int(x_rechts), :]
     return cropped1, cropped2
 
-def loadImages(number, scale=80):
-
-    img1 = cv.imread(f"L/{number}.jpg")
-    img2 = cv.imread(f"R/{number}.jpg")
-
-    if scale != 100:
-        width = int(img1.shape[1] * scale / 100)
-        height = int(img1.shape[0] * scale / 100)
-        dim = (width, height)
-
-        img1 = cv.resize(img1, dim, interpolation=cv.INTER_AREA)
-        img2 = cv.resize(img2, dim, interpolation=cv.INTER_AREA)
+def load_images(left_path, right_path):
+    img1 = cv.imread(left_path)
+    img2 = cv.imread(right_path)
 
     img1 = cv.cvtColor(img1, cv.COLOR_BGR2RGB)
     img2 = cv.cvtColor(img2, cv.COLOR_BGR2RGB)
-
+    
+    img1 = resize_to_width(img1)
+    img2 = resize_to_width(img2)
     return img1, img2

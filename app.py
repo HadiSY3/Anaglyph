@@ -37,23 +37,34 @@ def main():
     ctk.CTkComboBox(root, variable=color_mode_var, values=["color", "gray", "half_mix", "red_blue_monochrome", "red_cyan_monochrome", "half-color", "optimized", "dubois"]).grid(row=1, column=1, padx=pad, pady=10)
 
     ctk.CTkLabel(root, text="Feature detection:").grid(row=1, column=2, sticky="w", padx=10, pady=10)
-    ctk.CTkComboBox(root, variable=feature_var, values=["ORB", "SIFT"]).grid(row=1, column=3, padx=pad, pady=10)
+    ctk.CTkComboBox(root, variable=feature_var, values=["ORB", "SIFT", "FAST", "AKAZE", "All"]).grid(row=1, column=3, padx=pad, pady=10)
 
     ctk.CTkLabel(root, text="Apply Shift:").grid(row=3, column=0, sticky="w", padx=pad, pady=10)
     ctk.CTkCheckBox(root, variable=shift_var, text="").grid(row=3, column=1, sticky="w", padx=pad, pady=10)
 
-    ctk.CTkButton(root, text="Process", command=process_images).grid(row=4, column=0, columnspan=2, pady=20)
+    ctk.CTkButton(root, text="Process", command=process).grid(row=4, column=0, columnspan=2, pady=20)
 
     root.mainloop()
 
 
-def process_images():
+def process():
+    if feature_var.get() == "All":
+        process_images("AKAZE")
+        process_images("ORB")
+        process_images("SIFT")
+        process_images("FAST")
+        return
+    
+    process_images(feature_var.get())
+
+
+
+def process_images(feature_detection):
     global image_range_var, color_mode_var, shift_var, feature_var, root
 
     image_range = image_range_var.get()
     color_mode = color_mode_var.get()
     shift = shift_var.get()
-    feature_detection = feature_var.get()
 
     try:
         image_range_parsed = parse_range(image_range)
@@ -83,9 +94,7 @@ def process_images():
             keypoints2, descriptors2 = fd.detectAndCompute(gray2, None)
 
             matches = flann(descriptors1, descriptors2)
-            print("number matches: ", len(matches))
             pts1, pts2, good_matches = filter_matches(matches, keypoints1, keypoints2)
-            print("number good matches: ", len(good_matches))
 
         elif feature_detection == "ORB":
             fd = cv.ORB_create(nfeatures=35000)
@@ -93,9 +102,40 @@ def process_images():
             keypoints2, descriptors2 = fd.detectAndCompute(gray2, None)
 
             matches = bf_orb(descriptors1, descriptors2)
-            print("number matches: ", len(matches))
             pts1, pts2, good_matches = filter_matches_orb(matches, keypoints1, keypoints2)
-            print("number good matches: ", len(good_matches))
+
+        elif feature_detection == "FAST":
+            fast = cv.FastFeatureDetector_create()
+            fast.setThreshold(35) 
+            fast.setType(cv.FAST_FEATURE_DETECTOR_TYPE_9_16)
+
+            keypoints1 = fast.detect(gray1, None)
+            keypoints2 = fast.detect(gray2, None)
+
+            brief = cv.xfeatures2d.BriefDescriptorExtractor_create()
+            keypoints1, descriptors1 = brief.compute(gray1, keypoints1)
+            keypoints2, descriptors2 = brief.compute(gray2, keypoints2)
+
+            matches = bf_orb(descriptors1, descriptors2)
+            pts1, pts2, good_matches = filter_matches_orb(matches, keypoints1, keypoints2, max_distance=30)
+
+
+        elif feature_detection == "AKAZE":
+            akaze = cv.AKAZE_create(
+                threshold=0.0001,      
+                nOctaves=10,           
+                nOctaveLayers=10       
+            )
+
+            keypoints1, descriptors1 = akaze.detectAndCompute(gray1, None)
+            keypoints2, descriptors2 = akaze.detectAndCompute(gray2, None)
+
+            matches = bf_orb(descriptors1, descriptors2)
+            pts1, pts2, good_matches = filter_matches_orb(matches, keypoints1, keypoints2)
+
+            
+        print(f"Using {feature_detection} number matches: ", len(matches))
+        print(f"Using {feature_detection} number good matches: ", len(good_matches))
             
 
         fundamental_matrix, inliers = cv.findFundamentalMat(pts1, pts2, cv.FM_RANSAC)
@@ -119,33 +159,7 @@ def process_images():
         cv.imwrite(result_path, image)
 
 
-def load_images(left_path, right_path):
-    img1 = cv.imread(left_path)
-    img2 = cv.imread(right_path)
 
-    img1 = cv.cvtColor(img1, cv.COLOR_BGR2RGB)
-    img2 = cv.cvtColor(img2, cv.COLOR_BGR2RGB)
-
-    target_width = 1440
-    
-    def resize_to_width(img):
-        # Get original dimensions
-        height, width = img.shape[:2]
-        
-        # Calculate the scaling factor to maintain aspect ratio based on width
-        scale_factor = target_width / width
-        
-        # Calculate new height based on scale factor
-        new_height = int(height * scale_factor)
-        
-        # Resize image
-        return cv.resize(img, (target_width, new_height), interpolation=cv.INTER_AREA)
-    
-    
-    # Resize both images
-    img1 = resize_to_width(img1)
-    img2 = resize_to_width(img2)
-    return img1, img2
 
 if __name__ == "__main__":
     main()

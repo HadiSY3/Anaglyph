@@ -14,7 +14,7 @@ def flann(des1, des2):
     index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)                  # "trees"  anzahl der Bäume, mehr = aufwendiger aber effektiver
     search_params = dict(checks=50)                                             # "checks" wie oft soll ein Bäum geprüft werden
     flann = cv.FlannBasedMatcher(index_params, search_params)
-    matches = flann.knnMatch(des1, des2, k=2)                                   # "k" uns interessieren für jeden deskriptor im bild1 die nächsten k deskriptoren im bild2
+    matches = flann.knnMatch(des1, des2, k=2)                                   # "k"      uns interessieren für jeden deskriptor im bild1 die nächsten k deskriptoren im bild2
     return matches
 
 def filter_matches(matches, keypoints1, keypoints2):
@@ -35,12 +35,12 @@ def filter_matches(matches, keypoints1, keypoints2):
 
 
 def flann_orb(des1, des2):
-    index_params = dict(algorithm=6,  # FLANN_INDEX_LSH for binary descriptors
-                        table_number=6,  # Number of hash tables
-                        key_size=12,  # Size of the hash table
-                        multi_probe_level=1)  # Number of probes
+    index_params = dict(algorithm=6,  # FLANN_INDEX_LSH
+                        table_number=16,  # Number of hash tables (increase for more sensitivity)
+                        key_size=24,     # Length of the descriptor (increase for more detailed matches)
+                        multi_probe_level=2)  # Number of probes
 
-    search_params = dict(checks=50)  # Number of checks for the approximate search
+    search_params = dict(checks=150)  # Number of checks for the approximate search
     flann = cv.FlannBasedMatcher(index_params, search_params)
     matches = flann.knnMatch(des1, des2, k=2)
 
